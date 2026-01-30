@@ -1,10 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, Search, User } from 'lucide-react';
+import Link from 'next/link';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image_url: string;
+  status: string;
+}
 
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    // Fetch categories from API
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+        if (data.categories) {
+          setCategories(data.categories);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const menuItems = [
     { name: 'Home', href: '/' },
@@ -55,8 +83,39 @@ export default function Navbar() {
                   )}
                 </a>
                 
-                {/* Dropdown placeholder */}
-                {item.hasDropdown && activeDropdown === item.name && (
+                {/* Products Dropdown with Categories */}
+                {item.hasDropdown && activeDropdown === item.name && item.name === 'Product Center' && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-black backdrop-blur-xl rounded-lg shadow-2xl border border-zinc-700/50 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {categories.length > 0 ? (
+                      categories.map((category) => (
+                        <Link
+                          key={category.id}
+                          href={`/categories/${category.slug}`}
+                          className="block px-4 py-3 text-sm text-gray-300 hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 hover:text-white transition-all duration-200 border-l-2 border-transparent hover:border-purple-500"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={category.image_url} 
+                              alt={category.name}
+                              className="w-8 h-8 rounded object-cover"
+                            />
+                            <div>
+                              <div className="font-medium">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.description}</div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-sm text-gray-500">
+                        No categories available
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Service Dropdown (keep existing) */}
+                {item.hasDropdown && activeDropdown === item.name && item.name === 'Service' && (
                   <div className="absolute top-full left-0 mt-2 w-56 bg-black backdrop-blur-xl rounded-lg shadow-2xl border border-zinc-700/50 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <a href="#" className="block px-4 py-3 text-sm text-gray-300 hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 hover:text-white transition-all duration-200 border-l-2 border-transparent hover:border-purple-500">
                       Option 1
