@@ -57,8 +57,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simple captcha check (in production, use proper captcha service)
-    if (captcha !== '1069') {
+    // Simple captcha check (configurable via env var, in production use a proper captcha service)
+    const expectedCaptcha = process.env.CONTACT_FORM_CAPTCHA || '1069';
+    if (captcha !== expectedCaptcha) {
       return NextResponse.json(
         { error: 'Invalid captcha' },
         { status: 400 }

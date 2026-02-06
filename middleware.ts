@@ -39,12 +39,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // If user is not authenticated and trying to access admin routes (except login)
-  if (!session && req.nextUrl.pathname.startsWith('/admin') && req.nextUrl.pathname !== '/admin') {
+  const isAdminCookie = !!req.cookies.get('admin_logged_in');
+  if (!session && !isAdminCookie && req.nextUrl.pathname.startsWith('/admin') && req.nextUrl.pathname !== '/admin') {
     return NextResponse.redirect(new URL('/admin', req.url));
   }
 
-  // If user is authenticated and trying to access login page, redirect to dashboard
-  if (session && req.nextUrl.pathname === '/admin') {
+  // If user is authenticated (session or cookie) and trying to access login page, redirect to dashboard
+  if ((session || isAdminCookie) && req.nextUrl.pathname === '/admin') {
     return NextResponse.redirect(new URL('/admin/dashboard', req.url));
   }
 

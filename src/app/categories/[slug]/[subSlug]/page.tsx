@@ -68,11 +68,15 @@ export default function SubCategoryPage() {
             if (foundSubCategory) {
               setSubCategory(foundSubCategory);
               
-              // Filter products for this subcategory
-              const filteredProducts = data.products?.filter(
-                (prod: Product) => prod.sub_category_id === foundSubCategory.id
-              ) || [];
-              setProducts(filteredProducts);
+              // Fetch products for this subcategory via products API
+              try {
+                const productsRes = await fetch(`/api/products?sub_category_id=${foundSubCategory.id}`);
+                const productsData = await productsRes.json();
+                setProducts(Array.isArray(productsData) ? productsData : []);
+              } catch (err) {
+                console.error('Error fetching products for subcategory:', err);
+                setProducts([]);
+              }
             } else {
               setError('Sub-category not found');
             }

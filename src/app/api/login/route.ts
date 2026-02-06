@@ -27,8 +27,8 @@ export async function POST(request: NextRequest) {
 
     // Check credentials
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-      // Return success response
-      return NextResponse.json({
+      // Set an HttpOnly cookie so middleware can detect authenticated admin sessions
+      const res = NextResponse.json({
         success: true,
         message: 'Login successful',
         user: {
@@ -36,6 +36,17 @@ export async function POST(request: NextRequest) {
           role: 'admin'
         }
       });
+
+n      // In production, set secure flag for cookies
+      const cookieOptions: any = {
+        httpOnly: true,
+        path: '/',
+        maxAge: 60 * 60 * 24 // 1 day
+      };
+      if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+
+n      res.cookies.set('admin_logged_in', 'true', cookieOptions);
+      return res;
     } else {
       // Invalid credentials
       return NextResponse.json(

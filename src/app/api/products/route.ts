@@ -6,6 +6,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const subCategoryId = searchParams.get('sub_category_id');
     const featured = searchParams.get('featured');
+    const slug = searchParams.get('slug');
+
+    // If a slug is provided, return a single product (or null)
+    if (slug) {
+      const { data, error } = await supabaseAdmin
+        .from('products')
+        .select(`
+          *,
+          subcategories (
+            id,
+            name,
+            slug,
+            categories (
+              id,
+              name,
+              slug
+            )
+          )
+        `)
+        .eq('slug', slug)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
+      }
+
+      return NextResponse.json(data || null);
+    }
 
     let query = supabaseAdmin
       .from('products')

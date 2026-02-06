@@ -69,20 +69,25 @@ export default function ProductDetailPage() {
             if (foundSubCategory) {
               setSubCategory(foundSubCategory);
               
-              // Find product by slug
-              const foundProduct = data.products?.find(
-                (prod: Product) => prod.slug === productSlug && prod.sub_category_id === foundSubCategory.id
-              );
-              
-              if (foundProduct) {
-                setProduct(foundProduct);
-                
-                // Get related products (same subcategory, different product)
-                const relatedProds = data.products?.filter(
-                  (prod: Product) => prod.sub_category_id === foundSubCategory.id && prod.id !== foundProduct.id
-                ) || [];
-                setRelatedProducts(relatedProds);
-              } else {
+              // Fetch the product by slug via products API
+              try {
+                const prodRes = await fetch(`/api/products?slug=${productSlug}`);
+                const prodData = await prodRes.json();
+                const foundProduct = prodData || null;
+
+                if (foundProduct) {
+                  setProduct(foundProduct);
+
+                  // Get related products (same subcategory, different product)
+                  const relatedRes = await fetch(`/api/products?sub_category_id=${foundSubCategory.id}`);
+                  const relatedData = await relatedRes.json();
+                  const relatedProds = (Array.isArray(relatedData) ? relatedData : []).filter((prod: Product) => prod.id !== foundProduct.id);
+                  setRelatedProducts(relatedProds);
+                } else {
+                  setError('Product not found');
+                }
+              } catch (err) {
+                console.error('Error fetching product:', err);
                 setError('Product not found');
               }
             } else {

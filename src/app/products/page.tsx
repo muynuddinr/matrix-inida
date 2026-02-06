@@ -48,7 +48,7 @@ export default function ProductsPage() {
         setLoading(true);
         const [catRes, subCatRes, prodRes] = await Promise.all([
           fetch('/api/categories'),
-          fetch('/api/sub-categories'),
+          fetch('/api/subcategories'),
           fetch('/api/products'),
         ]);
 
@@ -57,8 +57,10 @@ export default function ProductsPage() {
         const prodData = await prodRes.json();
 
         setCategories(catData.categories || []);
-        setSubCategories(subCatData.subCategories || []);
-        setProducts(prodData.products || []);
+        // subcategories API returns an array directly
+        setSubCategories(Array.isArray(subCatData) ? subCatData : subCatData.subCategories || []);
+        // products API returns an array directly
+        setProducts(Array.isArray(prodData) ? prodData : prodData.products || []);
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
