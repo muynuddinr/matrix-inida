@@ -19,6 +19,7 @@ interface SubCategory {
   slug: string;
   description: string;
   image_url: string;
+  category_id: string;
 }
 
 interface Product {
@@ -29,6 +30,7 @@ interface Product {
   image_url: string;
   featured: boolean;
   status: string;
+  sub_category_id: string;
 }
 
 export default function SubCategoryPage() {
@@ -48,13 +50,35 @@ export default function SubCategoryPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/categories/${categorySlug}/sub/${subSlug}`);
+        const response = await fetch('/api/categories');
         const data = await response.json();
 
         if (response.ok) {
-          setCategory(data.category);
-          setSubCategory(data.subCategory);
-          setProducts(data.products);
+          // Find category by slug
+          const foundCategory = data.categories?.find((cat: Category) => cat.slug === categorySlug);
+          
+          if (foundCategory) {
+            setCategory(foundCategory);
+            
+            // Find subcategory by slug
+            const foundSubCategory = data.subCategories?.find(
+              (sub: SubCategory) => sub.slug === subSlug && sub.category_id === foundCategory.id
+            );
+            
+            if (foundSubCategory) {
+              setSubCategory(foundSubCategory);
+              
+              // Filter products for this subcategory
+              const filteredProducts = data.products?.filter(
+                (prod: Product) => prod.sub_category_id === foundSubCategory.id
+              ) || [];
+              setProducts(filteredProducts);
+            } else {
+              setError('Sub-category not found');
+            }
+          } else {
+            setError('Category not found');
+          }
         } else {
           setError(data.error || 'Failed to load data');
         }

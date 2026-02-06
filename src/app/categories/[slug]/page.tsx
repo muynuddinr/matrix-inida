@@ -22,6 +22,7 @@ interface SubCategory {
   description: string;
   image_url: string;
   display_order: number;
+  category_id: string;
 }
 
 export default function CategoryPage() {
@@ -39,12 +40,23 @@ export default function CategoryPage() {
     const fetchCategoryData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/categories/${slug}`);
+        const response = await fetch('/api/categories');
         const data = await response.json();
 
         if (response.ok) {
-          setCategory(data.category);
-          setSubCategories(data.subCategories);
+          // Find category by slug
+          const foundCategory = data.categories?.find((cat: Category) => cat.slug === slug);
+          
+          if (foundCategory) {
+            setCategory(foundCategory);
+            // Filter subcategories for this category
+            const filteredSubCategories = data.subCategories?.filter(
+              (sub: SubCategory) => sub.category_id === foundCategory.id
+            ) || [];
+            setSubCategories(filteredSubCategories);
+          } else {
+            setError('Category not found');
+          }
         } else {
           setError(data.error || 'Failed to load category');
         }

@@ -17,6 +17,7 @@ interface SubCategory {
   id: string;
   name: string;
   slug: string;
+  category_id: string;
 }
 
 interface Product {
@@ -27,6 +28,7 @@ interface Product {
   image_url: string;
   featured: boolean;
   status: string;
+  sub_category_id: string;
 }
 
 export default function ProductDetailPage() {
@@ -49,14 +51,46 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/categories/${categorySlug}/sub/${subSlug}/products/${productSlug}`);
+        const response = await fetch('/api/categories');
         const data = await response.json();
 
         if (response.ok) {
-          setCategory(data.category);
-          setSubCategory(data.subCategory);
-          setProduct(data.product);
-          setRelatedProducts(data.relatedProducts);
+          // Find category by slug
+          const foundCategory = data.categories?.find((cat: Category) => cat.slug === categorySlug);
+          
+          if (foundCategory) {
+            setCategory(foundCategory);
+            
+            // Find subcategory by slug
+            const foundSubCategory = data.subCategories?.find(
+              (sub: SubCategory) => sub.slug === subSlug && sub.category_id === foundCategory.id
+            );
+            
+            if (foundSubCategory) {
+              setSubCategory(foundSubCategory);
+              
+              // Find product by slug
+              const foundProduct = data.products?.find(
+                (prod: Product) => prod.slug === productSlug && prod.sub_category_id === foundSubCategory.id
+              );
+              
+              if (foundProduct) {
+                setProduct(foundProduct);
+                
+                // Get related products (same subcategory, different product)
+                const relatedProds = data.products?.filter(
+                  (prod: Product) => prod.sub_category_id === foundSubCategory.id && prod.id !== foundProduct.id
+                ) || [];
+                setRelatedProducts(relatedProds);
+              } else {
+                setError('Product not found');
+              }
+            } else {
+              setError('Sub-category not found');
+            }
+          } else {
+            setError('Category not found');
+          }
         } else {
           setError(data.error || 'Failed to load product');
         }
