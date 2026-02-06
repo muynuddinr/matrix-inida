@@ -16,9 +16,36 @@ export default function ContactUsPage() {
 
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
+  const handleSubmit = async () => {
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setIsSubmitted(true);
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          subject: '',
+          country: '',
+          message: '',
+          captcha: ''
+        });
+        setTimeout(() => setIsSubmitted(false), 3000);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to submit form');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Failed to submit form');
+    }
   };
 
   const handleChange = (name: string, value: string) => {
