@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         }
       });
 
-n      // In production, set secure flag for cookies
+      // In production, set secure flag for cookies
       const cookieOptions: any = {
         httpOnly: true,
         path: '/',
@@ -45,7 +45,7 @@ n      // In production, set secure flag for cookies
       };
       if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
 
-n      res.cookies.set('admin_logged_in', 'true', cookieOptions);
+      res.cookies.set('admin_logged_in', 'true', cookieOptions);
       return res;
     } else {
       // Invalid credentials
