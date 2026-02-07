@@ -15,7 +15,6 @@ interface SubCategory {
   slug: string;
   description: string;
   image_url: string;
-  display_order: number;
   category_id: number;
   created_at: string;
   updated_at: string;
@@ -33,7 +32,6 @@ export default function AdminSubCategoriesPage() {
     slug: '',
     description: '',
     image_url: '',
-    display_order: 0,
     category_id: 0,
   });
 
@@ -84,7 +82,7 @@ export default function AdminSubCategoriesPage() {
         fetchData();
         setShowForm(false);
         setEditingSubCategory(null);
-        setFormData({ name: '', slug: '', description: '', image_url: '', display_order: 0, category_id: 0 });
+        setFormData({ name: '', slug: '', description: '', image_url: '', category_id: 0 });
       }
     } catch (error) {
       console.error('Error saving subcategory:', error);
@@ -98,7 +96,6 @@ export default function AdminSubCategoriesPage() {
       slug: subCategory.slug,
       description: subCategory.description || '',
       image_url: subCategory.image_url || '',
-      display_order: subCategory.display_order,
       category_id: subCategory.category_id,
     });
     setShowForm(true);
@@ -249,15 +246,6 @@ export default function AdminSubCategoriesPage() {
                   )}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Display Order</label>
-                <input
-                  type="number"
-                  value={formData.display_order}
-                  onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -270,7 +258,7 @@ export default function AdminSubCategoriesPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingSubCategory(null);
-                    setFormData({ name: '', slug: '', description: '', image_url: '', display_order: 0, category_id: 0 });
+                    setFormData({ name: '', slug: '', description: '', image_url: '', category_id: 0 });
                   }}
                   className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
                 >

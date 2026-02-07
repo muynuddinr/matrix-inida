@@ -8,10 +8,10 @@ export default function ContactUsPage() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     subject: '',
     country: '',
-    message: '',
-    captcha: ''
+    message: ''
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -32,10 +32,10 @@ export default function ContactUsPage() {
           firstName: '',
           lastName: '',
           email: '',
+          phone: '',
           subject: '',
           country: '',
-          message: '',
-          captcha: ''
+          message: ''
         });
         setTimeout(() => setIsSubmitted(false), 3000);
       } else {
@@ -205,6 +205,15 @@ export default function ContactUsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
 
+              {/* Phone */}
+              <input
+                type="tel"
+                placeholder="Phone Number"
+                value={formData.phone}
+                onChange={(e) => handleChange('phone', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+
               {/* Subject */}
               <input
                 type="text"
@@ -239,27 +248,7 @@ export default function ContactUsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
               />
 
-              {/* Captcha and Submit */}
-              <div className="flex flex-wrap items-center gap-4">
-                <input
-                  type="text"
-                  placeholder="1069"
-                  value={formData.captcha}
-                  onChange={(e) => handleChange('captcha', e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all w-32"
-                />
-                <div className="px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg font-mono text-gray-700">
-                  1069
-                </div>
-                
-                {/* Success Message */}
-                {isSubmitted && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="text-sm font-semibold">Success!</span>
-                  </div>
-                )}
-              </div>
+              {/* Submit */}
 
               {/* Submit Button */}
               <button
@@ -269,6 +258,14 @@ export default function ContactUsPage() {
                 <span>Submit Form</span>
                 <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
               </button>
+
+              {/* Success Message */}
+              {isSubmitted && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-semibold">Success!</span>
+                </div>
+              )}
             </div>
           </div>
 

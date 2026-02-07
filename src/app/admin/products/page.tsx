@@ -13,6 +13,7 @@ interface SubCategory {
   id: number;
   name: string;
   slug: string;
+  category_id: number;
   categories?: Category;
 }
 
@@ -24,7 +25,9 @@ interface Product {
   image_url: string;
   featured: boolean;
   status: string;
-  sub_category_id: number;
+  specifications: Record<string, string[]>;
+  category_id: number | null;
+  sub_category_id: number | null;
   created_at: string;
   updated_at: string;
   subcategories?: SubCategory;
@@ -44,7 +47,10 @@ export default function AdminProductsPage() {
     image_url: '',
     featured: false,
     status: 'active',
-    sub_category_id: 0,
+    specifications: {} as Record<string, string[]>,
+    selectedCategory: 0,
+    category_id: null as number | null,
+    sub_category_id: null as number | null,
   });
 
   useEffect(() => {
@@ -86,8 +92,29 @@ export default function AdminProductsPage() {
       const url = editingProduct ? '/api/products' : '/api/products';
       const method = editingProduct ? 'PUT' : 'POST';
       const body = editingProduct
-        ? { ...formData, id: editingProduct.id }
-        : formData;
+        ? { 
+            id: editingProduct.id,
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description,
+            image_url: formData.image_url,
+            featured: formData.featured,
+            status: formData.status,
+            specifications: formData.specifications,
+            category_id: formData.category_id,
+            sub_category_id: formData.sub_category_id
+          }
+        : {
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description,
+            image_url: formData.image_url,
+            featured: formData.featured,
+            status: formData.status,
+            specifications: formData.specifications,
+            category_id: formData.category_id,
+            sub_category_id: formData.sub_category_id
+          };
 
       const response = await fetch(url, {
         method,
@@ -99,7 +126,7 @@ export default function AdminProductsPage() {
         fetchData();
         setShowForm(false);
         setEditingProduct(null);
-        setFormData({ name: '', slug: '', description: '', image_url: '', featured: false, status: 'active', sub_category_id: 0 });
+        setFormData({ name: '', slug: '', description: '', image_url: '', featured: false, status: 'active', specifications: {}, selectedCategory: 0, category_id: null, sub_category_id: null });
       }
     } catch (error) {
       console.error('Error saving product:', error);
@@ -107,6 +134,13 @@ export default function AdminProductsPage() {
   };
 
   const handleEdit = (product: Product) => {
+    // Determine which category to show
+    let categoryId = product.category_id || 0;
+    if (!categoryId && product.sub_category_id) {
+      const subCategory = subCategories.find(sc => sc.id === product.sub_category_id);
+      categoryId = subCategory?.category_id || 0;
+    }
+
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -115,6 +149,9 @@ export default function AdminProductsPage() {
       image_url: product.image_url || '',
       featured: product.featured,
       status: product.status,
+      specifications: product.specifications || {},
+      selectedCategory: categoryId,
+      category_id: product.category_id,
       sub_category_id: product.sub_category_id,
     });
     setShowForm(true);
@@ -140,7 +177,8 @@ export default function AdminProductsPage() {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   };
 
-  const getSubCategoryInfo = (subCategoryId: number) => {
+  const getSubCategoryInfo = (subCategoryId: number | null) => {
+    if (!subCategoryId) return 'No Subcategory';
     const subCategory = subCategories.find(sc => sc.id === subCategoryId);
     if (subCategory) {
       const category = categories.find(c => c.id === subCategory.categories?.id);
@@ -185,19 +223,57 @@ export default function AdminProductsPage() {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Subcategory</label>
+                <label className="block text-sm font-medium mb-1">Category <span className="text-gray-500 text-xs">(Optional)</span></label>
                 <select
-                  value={formData.sub_category_id}
-                  onChange={(e) => setFormData({ ...formData, sub_category_id: parseInt(e.target.value) })}
+                  value={formData.selectedCategory}
+                  onChange={(e) => {
+                    const categoryId = parseInt(e.target.value);
+                    // Check if current subcategory belongs to the new category
+                    const currentSubCategory = subCategories.find(sc => sc.id === formData.sub_category_id);
+                    const isSubCategoryValid = !formData.sub_category_id || !currentSubCategory || 
+                      categoryId === 0 || currentSubCategory.category_id === categoryId;
+                    
+                    setFormData({ 
+                      ...formData, 
+                      selectedCategory: categoryId,
+                      category_id: categoryId === 0 ? null : categoryId, // Set category_id only when a specific category is selected
+                      sub_category_id: isSubCategoryValid ? formData.sub_category_id : null
+                    });
+                  }}
                   className="w-full px-3 py-2 border rounded-lg"
-                  required
                 >
-                  <option value={0}>Select Subcategory</option>
-                  {subCategories.map((subCategory) => (
-                    <option key={subCategory.id} value={subCategory.id}>
-                      {subCategory.categories?.name || 'Unknown'} &gt; {subCategory.name}
+                  <option value={0}>All Categories</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Subcategory <span className="text-gray-500 text-xs">(Optional)</span></label>
+                <select
+                  value={formData.sub_category_id || 0}
+                  onChange={(e) => {
+                    const subCatId = e.target.value === '0' ? null : parseInt(e.target.value);
+                    // If a subcategory is selected, clear category_id (it's implied by subcategory)
+                    // If no subcategory, keep the category_id from the selected category
+                    setFormData({ 
+                      ...formData, 
+                      sub_category_id: subCatId,
+                      category_id: subCatId ? null : formData.category_id
+                    });
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value={0}>No Subcategory</option>
+                  {subCategories
+                    .filter((subCategory) => formData.selectedCategory === 0 || subCategory.category_id === formData.selectedCategory)
+                    .map((subCategory) => (
+                      <option key={subCategory.id} value={subCategory.id}>
+                        {subCategory.name}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div>
@@ -291,6 +367,99 @@ export default function AdminProductsPage() {
                   <option value="draft">Draft</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Specifications</label>
+                <div className="space-y-2">
+                  {Object.entries(formData.specifications).map(([key, values]) => (
+                    <div key={key} className="border rounded p-2">
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={key}
+                          onChange={(e) => {
+                            const newKey = e.target.value;
+                            const newSpecs = { ...formData.specifications };
+                            delete newSpecs[key];
+                            newSpecs[newKey] = values;
+                            setFormData({ ...formData, specifications: newSpecs });
+                          }}
+                          placeholder="Specification name"
+                          className="flex-1 px-2 py-1 border rounded text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSpecs = { ...formData.specifications };
+                            delete newSpecs[key];
+                            setFormData({ ...formData, specifications: newSpecs });
+                          }}
+                          className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {values.map((value, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={value}
+                              onChange={(e) => {
+                                const newValues = [...values];
+                                newValues[index] = e.target.value;
+                                setFormData({
+                                  ...formData,
+                                  specifications: { ...formData.specifications, [key]: newValues }
+                                });
+                              }}
+                              placeholder="Value"
+                              className="flex-1 px-2 py-1 border rounded text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newValues = values.filter((_, i) => i !== index);
+                                setFormData({
+                                  ...formData,
+                                  specifications: { ...formData.specifications, [key]: newValues }
+                                });
+                              }}
+                              className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                            >
+                              X
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              specifications: { ...formData.specifications, [key]: [...values, ''] }
+                            });
+                          }}
+                          className="px-2 py-1 bg-green-500 text-white rounded text-sm"
+                        >
+                          Add Value
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newKey = `Spec ${Object.keys(formData.specifications).length + 1}`;
+                      setFormData({
+                        ...formData,
+                        specifications: { ...formData.specifications, [newKey]: [''] }
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-blue-500 text-white rounded text-sm"
+                  >
+                    Add Specification
+                  </button>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -303,7 +472,7 @@ export default function AdminProductsPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingProduct(null);
-                    setFormData({ name: '', slug: '', description: '', image_url: '', featured: false, status: 'active', sub_category_id: 0 });
+                    setFormData({ name: '', slug: '', description: '', image_url: '', featured: false, status: 'active', specifications: {}, selectedCategory: 0, category_id: null, sub_category_id: null });
                   }}
                   className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
                 >

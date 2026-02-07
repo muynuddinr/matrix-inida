@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('category_id');
@@ -16,7 +21,7 @@ export async function GET(request: NextRequest) {
           slug
         )
       `)
-      .order('display_order', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (categoryId) {
       query = query.eq('category_id', categoryId);
@@ -42,8 +47,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
-    const { name, slug, description, image_url, display_order, category_id } = await request.json();
+    const { name, slug, description, image_url, category_id } = await request.json();
 
     // Basic validation
     if (!name || !slug || !category_id) {
@@ -62,7 +72,6 @@ export async function POST(request: NextRequest) {
           slug,
           description,
           image_url,
-          display_order: display_order || 0,
           category_id,
         }
       ])
@@ -88,8 +97,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
-    const { id, name, slug, description, image_url, display_order, category_id } = await request.json();
+    const { id, name, slug, description, image_url, category_id } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -105,7 +119,6 @@ export async function PUT(request: NextRequest) {
         slug,
         description,
         image_url,
-        display_order,
         category_id,
         updated_at: new Date().toISOString(),
       })
@@ -132,6 +145,11 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

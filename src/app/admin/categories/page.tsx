@@ -9,7 +9,7 @@ interface Category {
   slug: string;
   description: string;
   image_url: string;
-  display_order: number;
+
   created_at: string;
   updated_at: string;
 }
@@ -24,7 +24,6 @@ export default function AdminCategoriesPage() {
     slug: '',
     description: '',
     image_url: '',
-    display_order: 0,
   });
 
   useEffect(() => {
@@ -65,7 +64,7 @@ export default function AdminCategoriesPage() {
         fetchCategories();
         setShowForm(false);
         setEditingCategory(null);
-        setFormData({ name: '', slug: '', description: '', image_url: '', display_order: 0 });
+        setFormData({ name: '', slug: '', description: '', image_url: '' });
       }
     } catch (error) {
       console.error('Error saving category:', error);
@@ -79,7 +78,6 @@ export default function AdminCategoriesPage() {
       slug: category.slug,
       description: category.description || '',
       image_url: category.image_url || '',
-      display_order: category.display_order,
     });
     setShowForm(true);
   };
@@ -208,15 +206,6 @@ export default function AdminCategoriesPage() {
                   )}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Display Order</label>
-                <input
-                  type="number"
-                  value={formData.display_order}
-                  onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                />
-              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -229,7 +218,7 @@ export default function AdminCategoriesPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingCategory(null);
-                    setFormData({ name: '', slug: '', description: '', image_url: '', display_order: 0 });
+                    setFormData({ name: '', slug: '', description: '', image_url: '' });
                   }}
                   className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
                 >

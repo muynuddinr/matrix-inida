@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabaseAdmin } from '@/lib/supabase';
 
 interface Contact {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   subject: string;
   country: string;
   message: string;
@@ -26,15 +26,15 @@ export default function AdminContactPage() {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseAdmin
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (error) {
-        setError(error.message);
+      const res = await fetch('/api/contact');
+      const body = await res.json();
+
+      if (!res.ok) {
+        setError(body?.error || 'Failed to fetch contacts');
+        setContacts([]);
       } else {
-        setContacts(data || []);
+        setContacts(body || []);
       }
     } catch (err) {
       setError('Failed to fetch contacts');
@@ -80,7 +80,7 @@ export default function AdminContactPage() {
           <div className="grid gap-6">
             {contacts.map((contact) => (
               <div key={contact.id} className="bg-white rounded-lg shadow p-6">
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Name</label>
                     <p className="text-gray-900">{contact.first_name} {contact.last_name}</p>
@@ -90,14 +90,18 @@ export default function AdminContactPage() {
                     <p className="text-gray-900">{contact.email}</p>
                   </div>
                   <div>
+                    <label className="text-sm font-medium text-gray-500">Phone</label>
+                    <p className="text-gray-900">{contact.phone || 'Not provided'}</p>
+                  </div>
+                  <div>
                     <label className="text-sm font-medium text-gray-500">Country</label>
                     <p className="text-gray-900">{contact.country || 'Not specified'}</p>
                   </div>
-                  <div className="md:col-span-2 lg:col-span-3">
+                  <div className="md:col-span-2 lg:col-span-4">
                     <label className="text-sm font-medium text-gray-500">Subject</label>
                     <p className="text-gray-900 font-medium">{contact.subject}</p>
                   </div>
-                  <div className="md:col-span-2 lg:col-span-3">
+                  <div className="md:col-span-2 lg:col-span-4">
                     <label className="text-sm font-medium text-gray-500">Message</label>
                     <p className="text-gray-900 whitespace-pre-wrap">{contact.message}</p>
                   </div>

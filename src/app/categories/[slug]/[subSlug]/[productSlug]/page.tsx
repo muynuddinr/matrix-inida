@@ -29,6 +29,23 @@ interface Product {
   featured: boolean;
   status: string;
   sub_category_id: string;
+  category_id: string;
+  specifications?: Record<string, string[]>;
+  categories?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  subcategories?: {
+    id: string;
+    name: string;
+    slug: string;
+    categories?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
 }
 
 export default function ProductDetailPage() {
@@ -51,53 +68,33 @@ export default function ProductDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/categories');
-        const data = await response.json();
-
-        if (response.ok) {
-          // Find category by slug
-          const foundCategory = data.categories?.find((cat: Category) => cat.slug === categorySlug);
+        
+        // Fetch the product by slug via products API (which includes joined data)
+        const prodRes = await fetch(`/api/products?slug=${productSlug}`);
+        const prodData = await prodRes.json();
+        
+        if (prodRes.ok && prodData) {
+          setProduct(prodData);
           
-          if (foundCategory) {
-            setCategory(foundCategory);
-            
-            // Find subcategory by slug
-            const foundSubCategory = data.subCategories?.find(
-              (sub: SubCategory) => sub.slug === subSlug && sub.category_id === foundCategory.id
-            );
-            
-            if (foundSubCategory) {
-              setSubCategory(foundSubCategory);
-              
-              // Fetch the product by slug via products API
-              try {
-                const prodRes = await fetch(`/api/products?slug=${productSlug}`);
-                const prodData = await prodRes.json();
-                const foundProduct = prodData || null;
-
-                if (foundProduct) {
-                  setProduct(foundProduct);
-
-                  // Get related products (same subcategory, different product)
-                  const relatedRes = await fetch(`/api/products?sub_category_id=${foundSubCategory.id}`);
-                  const relatedData = await relatedRes.json();
-                  const relatedProds = (Array.isArray(relatedData) ? relatedData : []).filter((prod: Product) => prod.id !== foundProduct.id);
-                  setRelatedProducts(relatedProds);
-                } else {
-                  setError('Product not found');
-                }
-              } catch (err) {
-                console.error('Error fetching product:', err);
-                setError('Product not found');
-              }
-            } else {
-              setError('Sub-category not found');
-            }
-          } else {
-            setError('Category not found');
+          // Get category and subcategory from the product
+          if (prodData.subcategories?.categories) {
+            setCategory(prodData.subcategories.categories);
+            setSubCategory(prodData.subcategories);
+          } else if (prodData.categories) {
+            setCategory(prodData.categories);
+            setSubCategory(subSlug === 'all' ? null : null); // No subcategory
           }
+          
+          // Get related products (same subcategory or category)
+          const relatedQuery = prodData.sub_category_id 
+            ? `?sub_category_id=${prodData.sub_category_id}` 
+            : `?category_id=${prodData.category_id}`;
+          const relatedRes = await fetch(`/api/products${relatedQuery}`);
+          const relatedData = await relatedRes.json();
+          const relatedProds = (Array.isArray(relatedData) ? relatedData : []).filter((prod: Product) => prod.id !== prodData.id);
+          setRelatedProducts(relatedProds);
         } else {
-          setError(data.error || 'Failed to load product');
+          setError('Product not found');
         }
       } catch (err) {
         setError('An error occurred while loading the product');
@@ -121,7 +118,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  if (error || !category || !subCategory || !product) {
+  if (error || !category || !product) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -152,10 +149,14 @@ export default function ProductDetailPage() {
               <Link href={`/categories/${category.slug}`} className="hover:text-purple-600 transition">
                 {category.name}
               </Link>
-              <ChevronRight className="w-4 h-4" />
-              <Link href={`/categories/${category.slug}/${subCategory.slug}`} className="hover:text-purple-600 transition">
-                {subCategory.name}
-              </Link>
+              {subCategory && (
+                <>
+                  <ChevronRight className="w-4 h-4" />
+                  <Link href={`/categories/${category.slug}/${subCategory.slug}`} className="hover:text-purple-600 transition">
+                    {subCategory.name}
+                  </Link>
+                </>
+              )}
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-900">{product.name}</span>
           </div>
@@ -206,6 +207,34 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+            {/* Specifications */}
+            {product.specifications && Object.keys(product.specifications).length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Specifications</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(product.specifications).map(([key, values]) => (
+                      <div key={key} className="pb-4 border-b border-gray-200 last:border-b-0 last:pb-0">
+                        <p className="text-sm font-semibold text-gray-700 capitalize mb-2">
+                          {key.replace(/_/g, ' ')}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(values) && values.map((value, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-white border border-gray-300 rounded-full text-sm text-gray-600"
+                            >
+                              {value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-4 mb-8">
               <button
@@ -245,7 +274,7 @@ export default function ProductDetailPage() {
               {relatedProducts.map((relatedProduct) => (
                 <Link
                   key={relatedProduct.id}
-                  href={`/categories/${category.slug}/${subCategory.slug}/${relatedProduct.slug}`}
+                  href={`/categories/${relatedProduct.subcategories?.categories?.slug || relatedProduct.categories?.slug}/${relatedProduct.subcategories?.slug || 'all'}/${relatedProduct.slug}`}
                   className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-purple-500 hover:shadow-xl transition-all"
                 >
                   {relatedProduct.featured && (

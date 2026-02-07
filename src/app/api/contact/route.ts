@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const stats = searchParams.get('stats');
@@ -46,22 +51,18 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
-    const { firstName, lastName, email, subject, country, message, captcha } = await request.json();
+    const { firstName, lastName, email, subject, country, message, phone } = await request.json();
 
     // Basic validation
     if (!firstName || !lastName || !email || !subject || !message) {
       return NextResponse.json(
         { error: 'All required fields must be filled' },
-        { status: 400 }
-      );
-    }
-
-    // Simple captcha check (configurable via env var, in production use a proper captcha service)
-    const expectedCaptcha = process.env.CONTACT_FORM_CAPTCHA || '1069';
-    if (captcha !== expectedCaptcha) {
-      return NextResponse.json(
-        { error: 'Invalid captcha' },
         { status: 400 }
       );
     }
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
           first_name: firstName,
           last_name: lastName,
           email,
+          phone,
           subject,
           country,
           message,

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS contacts (
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   email TEXT NOT NULL,
+  phone TEXT,
   subject TEXT NOT NULL,
   country TEXT,
   message TEXT NOT NULL,
@@ -17,7 +18,6 @@ CREATE TABLE IF NOT EXISTS categories (
   slug TEXT NOT NULL UNIQUE,
   description TEXT,
   image_url TEXT,
-  display_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS subcategories (
   slug TEXT NOT NULL,
   description TEXT,
   image_url TEXT,
-  display_order INTEGER DEFAULT 0,
   category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -45,7 +44,9 @@ CREATE TABLE IF NOT EXISTS products (
   image_url TEXT,
   featured BOOLEAN DEFAULT false,
   status TEXT DEFAULT 'active',
-  sub_category_id INTEGER REFERENCES subcategories(id) ON DELETE CASCADE,
+  specifications JSONB DEFAULT '{}'::jsonb,
+  category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+  sub_category_id INTEGER REFERENCES subcategories(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(slug, sub_category_id)
@@ -58,4 +59,22 @@ CREATE INDEX IF NOT EXISTS idx_subcategories_category_id ON subcategories(catego
 CREATE INDEX IF NOT EXISTS idx_subcategories_slug ON subcategories(slug);
 CREATE INDEX IF NOT EXISTS idx_products_sub_category_id ON products(sub_category_id);
 CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+
+-- Create storage bucket for images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('uploads', 'uploads', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Set up storage policies for images bucket
+CREATE POLICY "Images are publicly accessible" ON storage.objects
+  FOR SELECT USING (bucket_id = 'uploads');
+
+CREATE POLICY "Authenticated users can upload images" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'uploads');
+
+CREATE POLICY "Users can update their own images" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'uploads');
+
+CREATE POLICY "Users can delete their own images" ON storage.objects
+  FOR DELETE USING (bucket_id = 'uploads');
 CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured) WHERE featured = true;

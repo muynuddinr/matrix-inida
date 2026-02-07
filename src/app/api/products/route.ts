@@ -1,19 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const subCategoryId = searchParams.get('sub_category_id');
     const featured = searchParams.get('featured');
     const slug = searchParams.get('slug');
+    const categoryId = searchParams.get('category_id');
 
     // If a slug is provided, return a single product (or null)
     if (slug) {
       const { data, error } = await supabaseAdmin
         .from('products')
         .select(`
-          *,
+          id,
+          name,
+          slug,
+          description,
+          image_url,
+          featured,
+          status,
+          specifications,
+          category_id,
+          sub_category_id,
+          created_at,
+          updated_at,
+          categories (
+            id,
+            name,
+            slug
+          ),
           subcategories (
             id,
             name,
@@ -38,7 +60,23 @@ export async function GET(request: NextRequest) {
     let query = supabaseAdmin
       .from('products')
       .select(`
-        *,
+        id,
+        name,
+        slug,
+        description,
+        image_url,
+        featured,
+        status,
+        specifications,
+        category_id,
+        sub_category_id,
+        created_at,
+        updated_at,
+        categories (
+          id,
+          name,
+          slug
+        ),
         subcategories (
           id,
           name,
@@ -58,6 +96,10 @@ export async function GET(request: NextRequest) {
 
     if (featured === 'true') {
       query = query.eq('featured', true);
+    }
+
+    if (categoryId) {
+      query = query.eq('category_id', categoryId).is('sub_category_id', null);
     }
 
     const { data, error } = await query;
@@ -80,13 +122,18 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
-    const { name, slug, description, image_url, featured, status, sub_category_id } = await request.json();
+    const { name, slug, description, image_url, featured, status, category_id, sub_category_id, specifications } = await request.json();
 
     // Basic validation
-    if (!name || !slug || !sub_category_id) {
+    if (!name || !slug) {
       return NextResponse.json(
-        { error: 'Name, slug, and sub_category_id are required' },
+        { error: 'Name and slug are required' },
         { status: 400 }
       );
     }
@@ -102,6 +149,8 @@ export async function POST(request: NextRequest) {
           image_url,
           featured: featured || false,
           status: status || 'active',
+          specifications: specifications || {},
+          category_id,
           sub_category_id,
         }
       ])
@@ -127,8 +176,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
-    const { id, name, slug, description, image_url, featured, status, sub_category_id } = await request.json();
+    const { id, name, slug, description, image_url, featured, status, category_id, sub_category_id, specifications } = await request.json();
 
     if (!id) {
       return NextResponse.json(
@@ -146,6 +200,8 @@ export async function PUT(request: NextRequest) {
         image_url,
         featured,
         status,
+        specifications,
+        category_id,
         sub_category_id,
         updated_at: new Date().toISOString(),
       })
@@ -172,6 +228,11 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
