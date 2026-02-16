@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronRight, Package, Star } from 'lucide-react';
+import Image from 'next/image';
+import { ChevronRight, Package, Star, Truck, Shield, Heart } from 'lucide-react';
 import Navbar from '@/app/Components/Navbar';
 import Footer from '@/app/Components/Footer';
 
@@ -19,7 +20,6 @@ interface SubCategory {
   slug: string;
   description: string;
   image_url: string;
-  category_id: string;
 }
 
 interface Product {
@@ -30,18 +30,12 @@ interface Product {
   image_url: string;
   featured: boolean;
   status: string;
-  sub_category_id: string;
-  specifications?: Record<string, string[]>;
-  subcategories?: {
+  technical_specs?: Array<{
     id: string;
-    name: string;
-    slug: string;
-    categories?: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-  };
+    specification_key: string;
+    specification_values: string[];
+    display_order: number;
+  }>;
 }
 
 export default function SubCategoryPage() {
@@ -54,69 +48,7 @@ export default function SubCategoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState<boolean>(false);
-  const [selectedSpecifications, setSelectedSpecifications] = useState<Record<string, string[]>>({});
-
-  const filteredProducts = products.filter((product) => {
-    if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-    if (showFeaturedOnly && !product.featured) {
-      return false;
-    }
-    
-    // Filter by specifications
-    if (Object.keys(selectedSpecifications).length > 0) {
-      for (const [key, values] of Object.entries(selectedSpecifications)) {
-        if (values.length === 0) continue;
-        
-        const productSpec = product.specifications?.[key];
-        if (!productSpec) {
-          return false;
-        }
-
-        const hasMatch = values.some((value) =>
-          Array.isArray(productSpec) ? productSpec.includes(value) : productSpec === value
-        );
-
-        if (!hasMatch) {
-          return false;
-        }
-      }
-    }
-    
-    return true;
-  });
-
-  const getAvailableSpecifications = () => {
-    const specsMap: Record<string, Set<string>> = {};
-    
-    products.forEach((product) => {
-      if (product.specifications && typeof product.specifications === 'object') {
-        Object.entries(product.specifications).forEach(([key, value]) => {
-          if (!specsMap[key]) {
-            specsMap[key] = new Set();
-          }
-
-          if (Array.isArray(value)) {
-            value.forEach((v) => specsMap[key].add(String(v)));
-          } else {
-            specsMap[key].add(String(value));
-          }
-        });
-      }
-    });
-
-    const result: Record<string, string[]> = {};
-    Object.entries(specsMap).forEach(([key, set]) => {
-      result[key] = Array.from(set).sort();
-    });
-
-    return result;
-  };
-
-  const availableSpecifications = getAvailableSpecifications();
+  const [type, setType] = useState<'sub-category' | 'product' | null>(null);
 
   useEffect(() => {
     if (!categorySlug || !subSlug) return;
@@ -124,39 +56,14 @@ export default function SubCategoryPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/categories');
+        const response = await fetch(`/api/categories/${categorySlug}/sub/${subSlug}`);
         const data = await response.json();
 
         if (response.ok) {
-          // Find category by slug
-          const foundCategory = data.categories?.find((cat: Category) => cat.slug === categorySlug);
-          
-          if (foundCategory) {
-            setCategory(foundCategory);
-            
-            // Find subcategory by slug
-            const foundSubCategory = data.subCategories?.find(
-              (sub: SubCategory) => sub.slug === subSlug && sub.category_id === foundCategory.id
-            );
-            
-            if (foundSubCategory) {
-              setSubCategory(foundSubCategory);
-              
-              // Fetch products for this subcategory via products API
-              try {
-                const productsRes = await fetch(`/api/products?sub_category_id=${foundSubCategory.id}`);
-                const productsData = await productsRes.json();
-                setProducts(Array.isArray(productsData) ? productsData : []);
-              } catch (err) {
-                console.error('Error fetching products for subcategory:', err);
-                setProducts([]);
-              }
-            } else {
-              setError('Sub-category not found');
-            }
-          } else {
-            setError('Category not found');
-          }
+          setCategory(data.category);
+          setSubCategory(data.subCategory);
+          setProducts(data.products);
+          setType(data.type || 'sub-category');
         } else {
           setError(data.error || 'Failed to load data');
         }
@@ -182,7 +89,7 @@ export default function SubCategoryPage() {
     );
   }
 
-  if (error || !category || !subCategory) {
+  if (error || !category) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -200,227 +107,289 @@ export default function SubCategoryPage() {
     );
   }
 
-  return (
-    <>
-      <Navbar />
-      <div className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <div className="relative h-72 bg-gradient-to-r from-purple-100 via-white to-blue-100 border-b border-gray-200">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
-        
-        {/* Background Image */}
-        <div className="absolute inset-0 opacity-20">
-          <img
-            src={subCategory.image_url}
-            alt={subCategory.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
-        </div>
+  // Handle standalone product view (product without sub-category)
+  if (type === 'product' && products.length === 1) {
+    const product = products[0];
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-white">
+          {/* Hero Section */}
+          <div className="relative h-72 bg-gradient-to-r from-purple-100 via-white to-blue-100 border-b border-gray-200">
+            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+            
+            {/* Background Image */}
+            <div className="absolute inset-0 opacity-20">
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+            </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 h-full flex flex-col justify-center">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-            <Link href="/" className="hover:text-purple-600 transition">Home</Link>
-            <ChevronRight className="w-4 h-4" />
-            <Link href={`/categories/${category.slug}`} className="hover:text-purple-600 transition">
-              {category.name}
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-900">{subCategory.name}</span>
-          </div>
-
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            {subCategory.name}
-          </h1>
-          <p className="text-xl text-gray-700 max-w-2xl">
-            {subCategory.description}
-          </p>
-        </div>
-      </div>
-
-      {/* Products Section */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white border border-gray-200 rounded-xl p-6 sticky top-6">
-              {/* Category & Subcategory Info */}
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Category</h3>
-                <div className="flex items-center gap-3 mb-4">
-                  <img
-                    src={category?.image_url || 'https://via.placeholder.com/48?text=Cat'}
-                    alt={category?.name}
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
-                  <div>
-                    <p className="font-semibold text-gray-900">{category?.name}</p>
-                    <p className="text-sm text-gray-600">Category</p>
-                  </div>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Subcategory</h3>
-                <div className="flex items-center gap-3">
-                  <img
-                    src={subCategory.image_url || 'https://via.placeholder.com/48?text=Sub'}
-                    alt={subCategory.name}
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
-                  <div>
-                    <p className="font-semibold text-gray-900">{subCategory.name}</p>
-                    <p className="text-sm text-gray-600">{filteredProducts.length} products</p>
-                  </div>
-                </div>
+            <div className="relative max-w-7xl mx-auto px-6 h-full flex flex-col justify-center">
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                <Link href="/" className="hover:text-purple-600 transition">Home</Link>
+                <ChevronRight className="w-4 h-4" />
+                <Link href={`/categories/${category.slug}`} className="hover:text-purple-600 transition">
+                  {category.name}
+                </Link>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-gray-900">{product.name}</span>
               </div>
 
-              {/* Filters */}
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Filters</h3>
-                {/* Search */}
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Search Products
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                {/* Featured */}
-                <div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showFeaturedOnly}
-                      onChange={(e) => setShowFeaturedOnly(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-sm font-semibold text-gray-700">Featured only</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Specifications */}
-              {Object.keys(availableSpecifications).length > 0 && (
-                <div className="border-t border-gray-200 pt-6 mt-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Specifications</h3>
-                  <div className="space-y-4">
-                    {Object.entries(availableSpecifications).map(([specKey, specValues]) => (
-                      <div key={specKey}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">
-                          {specKey.replace(/_/g, ' ')}
-                        </label>
-                        <div className="space-y-2">
-                          {specValues.map((value) => (
-                            <label
-                              key={`${specKey}-${value}`}
-                              className="flex items-center gap-2 cursor-pointer group"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={
-                                  selectedSpecifications[specKey]?.includes(value) || false
-                                }
-                                onChange={(e) => {
-                                  const currentValues = selectedSpecifications[specKey] || [];
-                                  if (e.target.checked) {
-                                    setSelectedSpecifications({
-                                      ...selectedSpecifications,
-                                      [specKey]: [...currentValues, value],
-                                    });
-                                  } else {
-                                    setSelectedSpecifications({
-                                      ...selectedSpecifications,
-                                      [specKey]: currentValues.filter((v) => v !== value),
-                                    });
-                                  }
-                                }}
-                                className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
-                              />
-                              <span className="text-sm text-gray-700 group-hover:text-gray-900 transition capitalize">
-                                {value}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <h1 className="text-5xl font-bold text-gray-900 mb-4">
+                {product.name}
+              </h1>
+              <p className="text-xl text-gray-700 max-w-2xl">
+                {product.description}
+              </p>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
+          {/* Product Details */}
+          <div className="max-w-7xl mx-auto px-6 py-16">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+              {/* Product Image */}
+              <div>
+                <div className="relative bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden mb-4 w-full aspect-square">
+                  {product.featured && (
+                    <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold px-4 py-2 rounded-full flex items-center gap-2">
+                      <Star className="w-4 h-4 fill-white" />
+                      Featured Product
+                    </div>
+                  )}
+                  <Image
+                    src={product.image_url}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                    priority
+                    className="object-cover"
+                  />
+                </div>
+              </div>
 
-        {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <Link
-                key={product.id}
-                href={`/categories/${categorySlug}/${subSlug}/${product.slug}`}
-                className="group relative bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-purple-500 hover:shadow-xl transition-all duration-300"
-              >
-                {/* Featured Badge */}
-                {product.featured && (
-                  <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-white" />
-                    Featured
+              {/* Product Info */}
+              <div>
+                <h1 className="text-4xl font-bold text-gray-900 mb-6">
+                  {product.name}
+                </h1>
+
+                {/* Description */}
+                {product.description && (
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
+                    <p className="text-gray-700 leading-relaxed text-lg">
+                      {product.description}
+                    </p>
                   </div>
                 )}
 
-                {/* Product Image */}
-                <div className="relative h-56 overflow-hidden bg-gray-900">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
+                {/* Status */}
+                <div className="mb-8">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${product.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`}></div>
+                    <span className={`font-semibold ${product.status === 'active' ? 'text-emerald-600' : 'text-gray-500'}`}>
+                      {product.status === 'active' ? 'Available' : 'Unavailable'}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Product Details */}
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors line-clamp-2">
-                    {product.name}
-                  </h3>
-                  
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                    {product.description}
-                  </p>
-
-                  {/* View Details Button */}
+                {/* Action Buttons */}
+                <div className="flex gap-4 mb-8">
                   <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.location.href = `/categories/${categorySlug}/${subSlug}/${product.slug}`;
-                    }}
-                    className="w-full py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 hover:scale-105"
+                    className="flex-1 py-4 px-6 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 hover:scale-105 shadow-lg shadow-purple-500/25"
                   >
-                    <Package className="w-4 h-4" />
-                    View Details
+                    <Package className="w-6 h-6" />
+                    Learn More
+                  </button>
+                  <button className="p-4 bg-gradient-to-br from-gray-900 to-black border border-zinc-800 rounded-lg hover:border-purple-500/50 transition-all">
+                    <Heart className="w-6 h-6 text-white" />
                   </button>
                 </div>
-              </Link>
-            ))}
+
+                {/* Features */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <Truck className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-700">Free Delivery</p>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <Shield className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-700">Warranty</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-gray-900 to-black border border-zinc-800 rounded-lg p-4 text-center">
+                    <Package className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-300">Easy Returns</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Technical Specifications */}
+            {product.technical_specs && product.technical_specs.length > 0 && (
+              <div className="mb-16">
+                <h2 className="text-3xl font-bold text-gray-900 mb-8">Technical Specifications</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {product.technical_specs.map((spec) => (
+                    <div key={spec.id} className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+                      <h3 className="text-lg font-bold text-purple-900 mb-4">{spec.specification_key}</h3>
+                      <ul className="space-y-2">
+                        {spec.specification_values.map((value, idx) => (
+                          <li key={idx} className="flex items-start gap-3">
+                            <span className="text-purple-600 font-bold mt-1">•</span>
+                            <span className="text-gray-700">{value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-16 bg-gray-50 border border-gray-200 rounded-xl">
-            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">No Products Found</h3>
-            <p className="text-gray-600">
-              No products match your current filters.
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  // Handle sub-category view
+  if (type === 'sub-category' && subCategory) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-white">
+          {/* Hero Section */}
+          <div className="relative h-72 bg-gradient-to-r from-purple-100 via-white to-blue-100 border-b border-gray-200">
+          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+          
+          {/* Background Image */}
+          <div className="absolute inset-0 opacity-20">
+            <Image
+              src={subCategory.image_url}
+              alt={subCategory.name}
+              fill
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+          </div>
+
+          <div className="relative max-w-7xl mx-auto px-6 h-full flex flex-col justify-center">
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+              <Link href="/" className="hover:text-purple-600 transition">Home</Link>
+              <ChevronRight className="w-4 h-4" />
+              <Link href={`/categories/${category.slug}`} className="hover:text-purple-600 transition">
+                {category.name}
+              </Link>
+              <ChevronRight className="w-4 h-4" />
+              <span className="text-gray-900">{subCategory.name}</span>
+            </div>
+
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">
+              {subCategory.name}
+            </h1>
+            <p className="text-xl text-gray-700 max-w-2xl">
+              {subCategory.description}
             </p>
           </div>
-        )}
+        </div>
+
+        {/* Products Section */}
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Available Products</h2>
+            <p className="text-gray-600">
+              {products.length} {products.length === 1 ? 'product' : 'products'} available
+            </p>
+          </div>
+
+          {products.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/categories/${categorySlug}/${subSlug}/${product.slug}`}
+                  className="group relative bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-purple-500 hover:shadow-xl transition-all duration-300"
+                >
+                  {/* Featured Badge */}
+                  {product.featured && (
+                    <div className="absolute top-3 left-3 z-10 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-white" />
+                      Featured
+                    </div>
+                  )}
+
+                  {/* Product Image */}
+                  <div className="relative h-56 overflow-hidden bg-gray-900">
+                    <Image
+                      src={product.image_url}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors line-clamp-2">
+                      {product.name}
+                    </h3>
+                    
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      {product.description}
+                    </p>
+
+                    {/* View Details Button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.location.href = `/categories/${categorySlug}/${subSlug}/${product.slug}`;
+                      }}
+                      className="w-full py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 hover:scale-105"
+                    >
+                      <Package className="w-4 h-4" />
+                      View Details
+                    </button>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-gray-50 border border-gray-200 rounded-xl">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No Products Yet</h3>
+              <p className="text-gray-600">
+                Products for {subCategory.name} will be available soon.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+      <Footer />
+      </>
+    );
+  }
+
+  // Default fallback (shouldn't reach here)
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="text-center">
+        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h1>
+        <p className="text-gray-600 mb-6">The page you are looking for does not exist.</p>
+        <Link
+          href="/"
+          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+        >
+          Go Home
+        </Link>
       </div>
     </div>
-  </div>
-</div>
-<Footer />
-    </>
   );
 }

@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
+  // Check if already logged in
   useEffect(() => {
-    // Check if user is already logged in (using localStorage)
-    const isLoggedIn = localStorage.getItem('admin_logged_in');
-    if (isLoggedIn === 'true') {
+    setIsClient(true);
+    const token = localStorage.getItem('adminToken');
+    if (token) {
       router.push('/admin/dashboard');
     }
   }, [router]);
@@ -26,153 +27,156 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      // Call the login API
-      const response = await fetch('/api/login', {
+      if (!username || !password) {
+        setError('Please enter both username and password');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        // Login successful - store session in localStorage
-        localStorage.setItem('admin_logged_in', 'true');
-        localStorage.setItem('admin_email', email);
-        router.push('/admin/dashboard');
+      if (!response.ok) {
+        setError(data.error || 'Login failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      if (data.token) {
+        localStorage.setItem('adminToken', data.token);
+        localStorage.setItem('adminName', data.adminName || 'Admin');
+        
+        // Use window.location for more reliable redirect
+        window.location.href = '/admin/dashboard';
       } else {
-        // Login failed
-        setError(data.error || 'Login failed');
+        setError('No token received from server');
+        setLoading(false);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
-    } finally {
+      const errorMsg = err instanceof Error ? err.message : 'Connection error';
+      setError(errorMsg);
       setLoading(false);
     }
   };
 
+  if (!isClient) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <Lock className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-black via-purple-950 to-black flex items-center justify-center p-4">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+
+      {/* Login Card */}
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-black/40 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl p-8 space-y-8">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+              <Lock className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-purple-200 bg-clip-text text-transparent">
+              Admin Login
+            </h1>
+            <p className="text-gray-400 text-sm">Matrix India Dashboard</p>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Admin Login
-          </h2>
-          <p className="text-gray-600">
-            Sign in to access the Matrix India admin panel
-          </p>
-        </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="admin@matrixindia.com"
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Error Message */}
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                {error}
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Username */}
+            <div className="space-y-2">
+              <label htmlFor="username" className="text-gray-300 text-sm font-medium">
+                Username
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 w-5 h-5 text-purple-400" />
+                <input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-purple-950/20 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-gray-300 text-sm font-medium">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-5 h-5 text-purple-400" />
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-purple-950/20 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mt-6"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
-              ) : (
-                'Sign In'
-              )}
+              {loading ? 'Logging in...' : 'Login to Dashboard'}
             </button>
           </form>
 
           {/* Demo Credentials */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center mb-2">Demo Credentials</p>
-            <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
-              <p><strong>Email:</strong> admin@matrixindia.com</p>
-              <p><strong>Password:</strong> admin123</p>
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-2">
-              Use these credentials for testing
-            </p>
+          <div className="pt-4 border-t border-purple-500/20">
+            <p className="text-gray-400 text-xs text-center mb-2">Demo Credentials:</p>
+            <p className="text-gray-500 text-xs text-center">Username: <span className="text-purple-400">admin</span></p>
+            <p className="text-gray-500 text-xs text-center">Password: <span className="text-purple-400">password123</span></p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="text-center">
-          <p className="text-sm text-gray-500">
-            Matrix India Admin Panel
-          </p>
-        </div>
+        <p className="text-center text-gray-500 text-xs mt-6">
+          © 2026 Matrix India. All rights reserved.
+        </p>
       </div>
+
+      <style jsx>{`
+        @keyframes blob {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   );
 }

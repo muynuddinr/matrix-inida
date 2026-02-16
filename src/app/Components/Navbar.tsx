@@ -13,38 +13,25 @@ interface Category {
   status: string;
 }
 
-interface SubCategory {
-  id: string;
-  name: string;
-  slug: string;
-  category_id: string;
-  description?: string;
-  image_url?: string;
-}
-
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<SubCategory[]>([]);
 
   useEffect(() => {
-    // Fetch categories and subcategories from API
-    const fetchData = async () => {
+    // Fetch categories from API
+    const fetchCategories = async () => {
       try {
         const response = await fetch('/api/categories');
         const data = await response.json();
         if (data.categories) {
           setCategories(data.categories);
         }
-        if (data.subCategories) {
-          setSubcategories(data.subCategories);
-        }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching categories:', error);
       }
     };
 
-    fetchData();
+    fetchCategories();
   }, []);
 
   const menuItems = [
@@ -96,58 +83,29 @@ export default function Navbar() {
                   )}
                 </a>
                 
-                {/* Products Dropdown with Categories and Subcategories */}
+                {/* Products Dropdown with Categories */}
                 {item.hasDropdown && activeDropdown === item.name && item.name === 'Product Center' && (
-                  <div className="absolute top-full left-0 mt-2 w-96 bg-black backdrop-blur-xl rounded-lg shadow-2xl border border-zinc-700/50 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200 max-h-96 overflow-y-auto">
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-black backdrop-blur-xl rounded-lg shadow-2xl border border-zinc-700/50 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     {categories.length > 0 ? (
-                      categories.map((category) => {
-                        // Get subcategories for this category
-                        const catSubcategories = subcategories.filter(
-                          (sub) => sub.category_id === category.id
-                        );
-
-                        return (
-                          <div key={category.id}>
-                            {/* Category Header */}
-                            <Link
-                              href={`/categories/${category.slug}`}
-                              className="block px-4 py-3 text-sm text-gray-300 hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 hover:text-white transition-all duration-200 border-l-2 border-transparent hover:border-purple-500"
-                            >
-                              <div className="flex items-center gap-3">
-                                {category.image_url && (
-                                  <img 
-                                    src={category.image_url} 
-                                    alt={category.name}
-                                    className="w-8 h-8 rounded object-cover"
-                                  />
-                                )}
-                                <div>
-                                  <div className="font-medium">{category.name}</div>
-                                  <div className="text-xs text-gray-500">{category.description}</div>
-                                </div>
-                              </div>
-                            </Link>
-
-                            {/* Subcategories for this Category */}
-                            {catSubcategories.length > 0 && (
-                              <div className="bg-black/50 border-l border-zinc-700/50 ml-4">
-                                {catSubcategories.map((subcategory) => (
-                                  <Link
-                                    key={subcategory.id}
-                                    href={`/categories/${category.slug}/${subcategory.slug}`}
-                                    className="block px-4 py-2 text-xs text-gray-400 hover:text-gray-200 hover:bg-purple-600/10 transition-all duration-200 border-l-2 border-transparent hover:border-purple-500"
-                                  >
-                                    <div className="font-medium">{subcategory.name}</div>
-                                    {subcategory.description && (
-                                      <div className="text-xs text-gray-500 mt-0.5">{subcategory.description}</div>
-                                    )}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
+                      categories.map((category) => (
+                        <Link
+                          key={category.id}
+                          href={`/categories/${category.slug}`}
+                          className="block px-4 py-3 text-sm text-gray-300 hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-blue-600/20 hover:text-white transition-all duration-200 border-l-2 border-transparent hover:border-purple-500"
+                        >
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={category.image_url} 
+                              alt={category.name}
+                              className="w-8 h-8 rounded object-cover"
+                            />
+                            <div>
+                              <div className="font-medium">{category.name}</div>
+                              <div className="text-xs text-gray-500">{category.description}</div>
+                            </div>
                           </div>
-                        );
-                      })
+                        </Link>
+                      ))
                     ) : (
                       <div className="px-4 py-3 text-sm text-gray-500">
                         No categories available

@@ -2,209 +2,376 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, ChevronRight, Grid3X3, Package } from 'lucide-react';
+import Image from 'next/image';
+import { ChevronRight, Package, Star, Filter, X } from 'lucide-react';
 import Navbar from '@/app/Components/Navbar';
 import Footer from '@/app/Components/Footer';
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  image_url?: string;
+interface TechnicalSpec {
+    id: string;
+    specification_key: string;
+    specification_values: string[];
+    display_order: number;
 }
 
-interface SubCategory {
-  id: string;
-  name: string;
-  slug: string;
-  category_id: string;
+interface Product {
+    id: string;
+    name: string;
+    slug: string;
+    image_url: string;
+    featured: boolean;
+    status: string;
+    category?: string;
+    subCategory?: string;
+    technical_specs?: TechnicalSpec[];
+}
+
+interface Category {
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    image_url: string;
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/categories');
-        const data = await res.json();
+    // Filter states
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedSpecs, setSelectedSpecs] = useState<{ [key: string]: string[] }>({});
+    const [allSpecKeys, setAllSpecKeys] = useState<string[]>([]);
 
-        if (res.ok) {
-          setCategories(data.categories || []);
-          setSubCategories(data.subCategories || []);
-        } else {
-          setError('Failed to load categories');
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+
+                // Fetch all categories
+                const catRes = await fetch('/api/categories');
+                const catData = await catRes.json();
+
+                if (!catRes.ok) {
+                    setError(catData.error || 'Failed to load categories');
+                    return;
+                }
+
+                setCategories(catData.categories || []);
+
+                // Fetch all products
+                const prodRes = await fetch('/api/products');
+                const prodData = await prodRes.json();
+
+                if (!prodRes.ok) {
+                    setError(prodData.error || 'Failed to load products');
+                    return;
+                }
+
+                const allProducts = prodData.products || [];
+                setProducts(allProducts);
+
+                // Collect all specification keys from all products
+                const specKeysSet = new Set<string>();
+                allProducts.forEach((prod: Product) => {
+                    if (prod.technical_specs) {
+                        prod.technical_specs.forEach(spec => {
+                            specKeysSet.add(spec.specification_key);
+                        });
+                    }
+                });
+
+                setAllSpecKeys(Array.from(specKeysSet).sort());
+            } catch (err) {
+                setError('An error occurred while loading data');
+                console.error('Error fetching data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Filter products based on selected filters
+    const filteredProducts = products.filter(product => {
+        // Filter by category
+        if (selectedCategories.length > 0) {
+            if (!selectedCategories.includes(product.category || '')) {
+                return false;
+            }
         }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load categories');
-      } finally {
-        setLoading(false);
-      }
+
+        // Filter by technical specifications
+        for (const [specKey, specValues] of Object.entries(selectedSpecs)) {
+            if (specValues.length === 0) continue;
+
+            const productSpec = product.technical_specs?.find(s => s.specification_key === specKey);
+            if (!productSpec) return false;
+
+            const hasMatch = specValues.some(val => productSpec.specification_values.includes(val));
+            if (!hasMatch) return false;
+        }
+
+        return true;
+    });
+
+    // Get unique specification values for a key
+    const getSpecValues = (specKey: string): string[] => {
+        const values = new Set<string>();
+        products.forEach(product => {
+            product.technical_specs?.forEach(spec => {
+                if (spec.specification_key === specKey) {
+                    spec.specification_values.forEach(val => values.add(val));
+                }
+            });
+        });
+        return Array.from(values).sort();
     };
 
-    fetchData();
-  }, []);
+    const toggleCategory = (catName: string) => {
+        setSelectedCategories(prev =>
+            prev.includes(catName) ? prev.filter(s => s !== catName) : [...prev, catName]
+        );
+    };
 
-  const filteredCategories = categories.filter((category) =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const toggleSpecValue = (specKey: string, value: string) => {
+        setSelectedSpecs(prev => {
+            const values = prev[specKey] || [];
+            return {
+                ...prev,
+                [specKey]: values.includes(value)
+                    ? values.filter(v => v !== value)
+                    : [...values, value],
+            };
+        });
+    };
 
-  return (
-    <>
-      <Navbar />
-      <main className="min-h-screen bg-black">
-        {/* Header */}
-        <div className="bg-linear-to-r from-purple-900 to-black border-b border-purple-500/20 py-12">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center gap-2 mb-4 text-gray-400">
-              <Link href="/" className="hover:text-purple-400 transition">
-                Home
-              </Link>
-              <ChevronRight className="w-4 h-4" />
-              <span className="text-purple-400">Categories</span>
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-2">Categories</h1>
-            <p className="text-gray-400">
-              Explore our product categories
-            </p>
-          </div>
-        </div>
+    const clearAllFilters = () => {
+        setSelectedCategories([]);
+        setSelectedSpecs({});
+    };
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400">Loading categories...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <p className="text-red-400">{error}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Sidebar */}
-              <div className="lg:col-span-1">
-                <div className="bg-linear-to-br from-gray-900 to-black border border-purple-500/20 rounded-xl p-6 sticky top-6">
-                  <h2 className="text-lg font-bold text-white mb-6">Browse</h2>
+    const hasActiveFilters = selectedCategories.length > 0 || Object.values(selectedSpecs).some(v => v.length > 0);
 
-                  {/* Search */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">
-                      Search Categories
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
-                      <input
-                        type="text"
-                        placeholder="Search categories..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 transition"
-                      />
+    if (loading) {
+        return (
+            <>
+                <Navbar />
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                            <Package className="w-8 h-8 text-purple-600 animate-spin" />
+                        </div>
+                        <p className="text-gray-600 text-lg">Loading categories...</p>
                     </div>
-                  </div>
-
-                  {/* Category Info */}
-                  <div className="mb-6 pt-6 border-t border-purple-500/20">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3">
-                      About Categories
-                    </h3>
-                    <p className="text-xs text-gray-400">
-                      Browse our product categories to find exactly what you're looking for. Each category contains related subcategories and products.
-                    </p>
-                  </div>
-
-                  {/* Specifications */}
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3">
-                      Product Specifications
-                    </h3>
-                    <p className="text-xs text-gray-400">
-                      Our products come with detailed specifications. Check category pages for product listings and individual product pages for full specs.
-                    </p>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="pt-6 border-t border-purple-500/20">
-                    <div className="text-sm text-gray-400">
-                      <p className="mb-2">Total Categories: {categories.length}</p>
-                      <p>Total Subcategories: {subCategories.length}</p>
-                    </div>
-                  </div>
                 </div>
-              </div>
+                <Footer />
+            </>
+        );
+    }
 
-              {/* Categories Grid */}
-              <div className="lg:col-span-3">
-                {filteredCategories.length === 0 ? (
-                  <div className="bg-linear-to-br from-gray-900 to-black border border-purple-500/20 rounded-xl p-12 text-center">
-                    <Grid3X3 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-400">No categories found matching your search</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <p className="text-gray-400">
-                        Showing {filteredCategories.length} categor{filteredCategories.length !== 1 ? 'ies' : 'y'}
-                      </p>
+    if (error) {
+        return (
+            <>
+                <Navbar />
+                <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-red-600 text-lg">{error}</p>
                     </div>
+                </div>
+                <Footer />
+            </>
+        );
+    }
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {filteredCategories.map((category) => {
-                        const categorySubCategories = subCategories.filter(
-                          (sub) => sub.category_id === category.id
-                        );
+    return (
+        <>
+            <Navbar />
+            <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white">
+                {/* Breadcrumb */}
+                <div className="bg-white border-b border-gray-200">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <div className="flex items-center gap-2 text-sm">
+                            <Link href="/" className="text-purple-600 hover:text-purple-700 transition">
+                                Home
+                            </Link>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">Categories</span>
+                        </div>
+                    </div>
+                </div>
 
-                        return (
-                          <Link
-                            key={category.id}
-                            href={`/categories/${category.slug}`}
-                            className="group"
-                          >
-                            <div className="bg-linear-to-br from-gray-900 to-black border border-purple-500/20 rounded-xl overflow-hidden hover:border-purple-500/50 transition">
-                              {/* Category Image */}
-                              <div className="relative h-48 overflow-hidden bg-gray-800">
-                                <img
-                                  src={category.image_url || 'https://via.placeholder.com/300?text=Category'}
-                                  alt={category.name}
-                                  className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
-                                />
-                              </div>
+                {/* Header */}
+                <div className="bg-white border-b border-gray-200">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                        <h1 className="text-4xl font-bold text-gray-900 mb-4">All Categories</h1>
+                        <p className="text-gray-600 max-w-2xl">
+                            Browse our complete range of products across all categories. Use filters to refine your search by specifications.
+                        </p>
+                    </div>
+                </div>
 
-                              {/* Category Info */}
-                              <div className="p-4">
-                                <h3 className="text-white font-semibold group-hover:text-purple-300 transition line-clamp-2 mb-2">
-                                  {category.name}
-                                </h3>
-                                <p className="text-xs text-gray-500 mb-3">
-                                  {categorySubCategories.length} subcategories
-                                </p>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                        {/* Filters Sidebar */}
+                        <div className="lg:col-span-1">
+                            <div className="sticky top-6">
+                                {/* Mobile Filter Toggle */}
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className="lg:hidden w-full flex items-center justify-between bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg transition mb-4"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Filter className="w-4 h-4" />
+                                        Filters
+                                    </span>
+                                    {hasActiveFilters && (
+                                        <span className="bg-white text-purple-600 text-xs font-semibold px-2 py-1 rounded-full">
+                                            {selectedCategories.length + Object.values(selectedSpecs).reduce((acc, v) => acc + v.length, 0)}
+                                        </span>
+                                    )}
+                                </button>
 
-                                <div className="pt-3 border-t border-purple-500/10 flex items-center justify-between">
-                                  <span className="text-xs text-gray-400">View Category</span>
-                                  <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition" />
+                                {/* Filters Panel */}
+                                <div
+                                    className={`lg:block bg-white border border-gray-200 rounded-lg p-6 ${showFilters ? 'block' : 'hidden'
+                                        }`}
+                                >
+                                    {/* Clear Filters */}
+                                    {hasActiveFilters && (
+                                        <button
+                                            onClick={clearAllFilters}
+                                            className="w-full mb-4 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition text-sm font-semibold flex items-center justify-center gap-2"
+                                        >
+                                            <X className="w-4 h-4" />
+                                            Clear All Filters
+                                        </button>
+                                    )}
+
+                                    {/* Category Filter */}
+                                    <div className="mb-6">
+                                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Categories</h3>
+                                        <div className="space-y-2">
+                                            {categories.map(cat => (
+                                                <label key={cat.id} className="flex items-center gap-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedCategories.includes(cat.name)}
+                                                        onChange={() => toggleCategory(cat.name)}
+                                                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                                    />
+                                                    <span className="text-sm text-gray-700">{cat.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Specification Filters */}
+                                    {allSpecKeys.length > 0 && (
+                                        <>
+                                            <div className="border-t border-gray-200 pt-4">
+                                                <h3 className="text-sm font-semibold text-gray-900 mb-4">Specifications</h3>
+                                                <div className="space-y-4">
+                                                    {allSpecKeys.map(specKey => (
+                                                        <div key={specKey} className="border border-gray-200 rounded-lg p-3">
+                                                            <h4 className="text-xs font-bold text-gray-900 mb-2 uppercase">{specKey}</h4>
+                                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                                {getSpecValues(specKey).map(value => (
+                                                                    <label key={value} className="flex items-center gap-2 cursor-pointer text-xs">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={(selectedSpecs[specKey] || []).includes(value)}
+                                                                            onChange={() => toggleSpecValue(specKey, value)}
+                                                                            className="w-3 h-3 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                                                        />
+                                                                        <span className="text-gray-700 truncate">{value}</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                              </div>
                             </div>
-                          </Link>
-                        );
-                      })}
+                        </div>
+
+                        {/* Products Grid */}
+                        <div className="lg:col-span-3">
+                            {/* Results Info */}
+                            <div className="mb-6 flex items-center justify-between">
+                                <p className="text-sm text-gray-600">
+                                    Showing <span className="font-semibold">{filteredProducts.length}</span> product{filteredProducts.length !== 1 ? 's' : ''}
+                                </p>
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={clearAllFilters}
+                                        className="text-sm text-purple-600 hover:text-purple-700 underline"
+                                    >
+                                        Clear filters
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Products List */}
+                            {filteredProducts.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {filteredProducts.map(product => (
+                                        <Link
+                                            key={product.id}
+                                            href={`/categories/${product.category?.toLowerCase().replace(/\s+/g, '-')}/
+${product.subCategory?.toLowerCase().replace(/\s+/g, '-')}/${product.slug}`}
+                                            className="group bg-white rounded-lg overflow-hidden hover:shadow-lg transition-shadow border border-gray-200"
+                                        >
+                                            <div className="relative bg-gray-100 h-48 overflow-hidden">
+                                                <Image
+                                                    src={product.image_url || 'https://via.placeholder.com/300'}
+                                                    alt={product.name}
+                                                    fill
+                                                    className="object-cover group-hover:scale-110 transition-transform duration-300"
+                                                />
+                                                {product.featured && (
+                                                    <div className="absolute top-2 right-2 bg-amber-400 rounded-full p-2">
+                                                        <Star className="w-5 h-5 text-amber-900 fill-current" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-4">
+                                                <p className="text-xs text-gray-500 mb-1">{product.category} / {product.subCategory}</p>
+                                                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition mb-2 line-clamp-2">
+                                                    {product.name}
+                                                </h3>
+                                                {product.technical_specs && product.technical_specs.length > 0 && (
+                                                    <div className="text-xs text-gray-600 space-y-1">
+                                                        {product.technical_specs.slice(0, 2).map(spec => (
+                                                            <div key={spec.id}>
+                                                                <span className="font-semibold">{spec.specification_key}:</span> {spec.specification_values.slice(0, 2).join(', ')}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12">
+                                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                    <p className="text-gray-600 text-lg mb-2">No products found</p>
+                                    <p className="text-gray-500 text-sm">Try adjusting your filters</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                </div>
             </div>
-          )}
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
+            <Footer />
+        </>
+    );
 }
