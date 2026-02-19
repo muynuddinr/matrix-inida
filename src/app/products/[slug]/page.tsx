@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, Star, Package, Truck, Shield, Heart } from 'lucide-react';
+import { ChevronRight, Star, Package, Truck, Shield, Heart, FileText } from 'lucide-react';
 import Navbar from '@/app/Components/Navbar';
 import Footer from '@/app/Components/Footer';
+import ContactModal from '@/app/Components/ContactModal';
 
 interface Category {
     id: string;
@@ -46,6 +47,7 @@ export default function ProductDetailPage() {
     const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     useEffect(() => {
         if (!slug) return;
@@ -190,6 +192,13 @@ export default function ProductDetailPage() {
                                     <Package className="w-6 h-6" />
                                     Learn More
                                 </button>
+                                <button
+                                    onClick={() => setShowContactModal(true)}
+                                    className="flex-1 py-4 px-6 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-teal-600 text-white hover:from-green-700 hover:to-teal-700 hover:scale-105 shadow-lg shadow-green-500/25"
+                                >
+                                    <FileText className="w-6 h-6" />
+                                    Request Catalog
+                                </button>
                                 <button className="p-4 bg-gradient-to-br from-gray-900 to-black border border-zinc-800 rounded-lg hover:border-purple-500/50 transition-all">
                                     <Heart className="w-6 h-6 text-white" />
                                 </button>
@@ -277,6 +286,12 @@ export default function ProductDetailPage() {
                 </div>
             </div>
             <Footer />
+            <ContactModal
+                isOpen={showContactModal}
+                onClose={() => setShowContactModal(false)}
+                productSlug={slug}
+                productName={product?.name}
+            />
         </>
     );
 }

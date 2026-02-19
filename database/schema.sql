@@ -110,18 +110,26 @@ CREATE INDEX IF NOT EXISTS idx_contact_enquiries_status ON contact_enquiries(sta
 CREATE INDEX IF NOT EXISTS idx_contact_enquiries_created_at ON contact_enquiries(created_at DESC);
 
 -- ============================================
--- NEWSLETTER SUBSCRIBERS TABLE
+-- CATALOG ENQUIRIES TABLE
 -- ============================================
-CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+CREATE TABLE IF NOT EXISTS catalog_enquiries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(255),
-  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'unsubscribed')),
-  subscribed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  unsubscribed_at TIMESTAMP WITH TIME ZONE,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  product_slug VARCHAR(255),
+  category_slug VARCHAR(255),
+  sub_category_slug VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'reviewed', 'replied')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_status ON catalog_enquiries(status);
+CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_created_at ON catalog_enquiries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_email ON catalog_enquiries(email);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
@@ -157,8 +165,8 @@ DROP TRIGGER IF EXISTS update_contact_enquiries_updated_at ON contact_enquiries;
 CREATE TRIGGER update_contact_enquiries_updated_at BEFORE UPDATE ON contact_enquiries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-DROP TRIGGER IF EXISTS update_newsletter_subscribers_updated_at ON newsletter_subscribers;
-CREATE TRIGGER update_newsletter_subscribers_updated_at BEFORE UPDATE ON newsletter_subscribers
+DROP TRIGGER IF EXISTS update_catalog_enquiries_updated_at ON catalog_enquiries;
+CREATE TRIGGER update_catalog_enquiries_updated_at BEFORE UPDATE ON catalog_enquiries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
@@ -171,6 +179,7 @@ ALTER TABLE sub_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_enquiries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog_enquiries ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Public can view active categories" ON categories;
@@ -193,7 +202,7 @@ CREATE POLICY "Public can view active products" ON products
 CREATE POLICY "Public can insert contact enquiries" ON contact_enquiries
   FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Public can insert newsletter subscriptions" ON newsletter_subscribers
+CREATE POLICY "Public can insert catalog enquiries" ON catalog_enquiries
   FOR INSERT WITH CHECK (true);
 
 -- ============================================

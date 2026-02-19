@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, Package, Star, Filter, X } from 'lucide-react';
+import { ChevronRight, Package, Star, Filter, X, FileText } from 'lucide-react';
 import Navbar from '@/app/Components/Navbar';
 import Footer from '@/app/Components/Footer';
+import ContactModal from '@/app/Components/ContactModal';
 
 interface Category {
   id: string;
@@ -59,6 +60,7 @@ export default function CategoryPage() {
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
   const [selectedSpecs, setSelectedSpecs] = useState<{ [key: string]: string[] }>({});
   const [allSpecKeys, setAllSpecKeys] = useState<string[]>([]);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -221,9 +223,16 @@ export default function CategoryPage() {
             <h1 className="text-5xl font-bold text-gray-900 mb-4">
               {category.name}
             </h1>
-            <p className="text-xl text-gray-700 max-w-2xl">
+            <p className="text-xl text-gray-700 max-w-2xl mb-6">
               {category.description}
             </p>
+            <button
+              onClick={() => setShowContactModal(true)}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 transition-all hover:scale-105 shadow-lg shadow-green-500/25"
+            >
+              <FileText className="w-6 h-6" />
+              Request Catalog
+            </button>
           </div>
         </div>
 
@@ -431,6 +440,12 @@ export default function CategoryPage() {
         </div>
       </div>
       <Footer />
+      <ContactModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        categorySlug={slug}
+        productName={category?.name}
+      />
     </>
   );
 }

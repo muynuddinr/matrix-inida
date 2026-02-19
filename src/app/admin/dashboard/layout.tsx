@@ -146,6 +146,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <span className="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
             Newsletter Enquiry
           </Link>
+
+          <Link
+            href="/admin/dashboard/catalog-enquiry"
+            className="flex items-center px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition"
+          >
+            <span className="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
+            Catalog Enquiry
+          </Link>
         </nav>
 
         {/* Logout */}
