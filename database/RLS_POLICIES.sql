@@ -3,7 +3,6 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sub_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_enquiries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- CATEGORIES POLICIES
@@ -61,14 +60,16 @@ CREATE POLICY "Allow authenticated read contact enquiries" ON contact_enquiries
   USING (auth.role() = 'authenticated');
 
 -- ============================================
--- NEWSLETTER SUBSCRIBERS POLICIES
+-- CATALOG ENQUIRIES POLICIES
 -- ============================================
--- Allow anyone to subscribe
-CREATE POLICY "Allow public subscribe to newsletter" ON newsletter_subscribers
+-- Allow anyone to insert catalog enquiries
+CREATE POLICY "Allow public insert catalog enquiries" ON catalog_enquiries
   FOR INSERT
   WITH CHECK (true);
 
--- Allow anyone to read their own subscription (using email)
-CREATE POLICY "Allow public read newsletter" ON newsletter_subscribers
+-- Allow anyone to read catalog enquiries (for admin access)
+CREATE POLICY "Allow public read catalog enquiries" ON catalog_enquiries
   FOR SELECT
   USING (true);
+
+

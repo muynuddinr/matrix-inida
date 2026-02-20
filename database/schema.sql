@@ -131,10 +131,6 @@ CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_status ON catalog_enquiries(sta
 CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_created_at ON catalog_enquiries(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_catalog_enquiries_email ON catalog_enquiries(email);
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_email ON newsletter_subscribers(email);
-CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_status ON newsletter_subscribers(status);
-
 -- ============================================
 -- FUNCTIONS & TRIGGERS
 -- ============================================
@@ -178,7 +174,6 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sub_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_enquiries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE catalog_enquiries ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
@@ -186,7 +181,6 @@ DROP POLICY IF EXISTS "Public can view active categories" ON categories;
 DROP POLICY IF EXISTS "Public can view active sub_categories" ON sub_categories;
 DROP POLICY IF EXISTS "Public can view active products" ON products;
 DROP POLICY IF EXISTS "Public can insert contact enquiries" ON contact_enquiries;
-DROP POLICY IF EXISTS "Public can insert newsletter subscriptions" ON newsletter_subscribers;
 
 -- Public read access for active items only
 CREATE POLICY "Public can view active categories" ON categories
@@ -198,7 +192,7 @@ CREATE POLICY "Public can view active sub_categories" ON sub_categories
 CREATE POLICY "Public can view active products" ON products
   FOR SELECT USING (status = 'active');
 
--- Public can insert contact enquiries and newsletter subscriptions
+-- Public can insert contact and catalog enquiries
 CREATE POLICY "Public can insert contact enquiries" ON contact_enquiries
   FOR INSERT WITH CHECK (true);
 

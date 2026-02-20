@@ -230,9 +230,8 @@ export default function CatalogEnquiryPage() {
                 enquiries.map((enquiry) => (
                   <div
                     key={enquiry.id}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition ${
-                      selectedEnquiry?.id === enquiry.id ? 'bg-purple-50 border-l-4 border-purple-500' : ''
-                    }`}
+                    className={`p-4 hover:bg-gray-50 cursor-pointer transition ${selectedEnquiry?.id === enquiry.id ? 'bg-purple-50 border-l-4 border-purple-500' : ''
+                      }`}
                     onClick={() => setSelectedEnquiry(enquiry)}
                   >
                     <div className="flex items-center justify-between">
@@ -352,7 +351,7 @@ export default function CatalogEnquiryPage() {
                       <div className="p-3 bg-gray-50 rounded-lg">
                         <span className="text-gray-900">
                           {selectedEnquiry.product_slug ? `Product: ${selectedEnquiry.product_slug}` :
-                           selectedEnquiry.category_slug ? `Category: ${selectedEnquiry.category_slug}` : ''}
+                            selectedEnquiry.category_slug ? `Category: ${selectedEnquiry.category_slug}` : ''}
                         </span>
                       </div>
                     </div>
